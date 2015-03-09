@@ -13,18 +13,20 @@ import pickle
 import md5
 
 # API KEY
-API_KEY = '<INSERT YOUR API KEY>'
+API_KEY = 'aecb9a307927ee6bf8fbc4f5b46ca8ff6109610913186dc2b83f2d6f473b5278'
 
 # Cache directory
 CACHE_DIR = 'cache'
 CACHE_PATH = join(getcwd(), CACHE_DIR)
 
-def is_modified_today(filename):
+def is_modified_today(filepath):
 	''' Check if cache was modified today. '''
-	modfied_time = getmtime(join(CACHE_PATH, filename))
+	modfied_time = getmtime(filepath)
 	return (datetime.today() - datetime.fromtimestamp(modfied_time)) < timedelta(days = 1)
 
 def load_cache(term):
+	# Garbage collect
+	garbage_collect()
 	''' Check if a term has already been searched.'''
 	term = md5.new(term).hexdigest()
 	# List files in cache directory
@@ -32,12 +34,27 @@ def load_cache(term):
 		cache_files = [ f for f in listdir(CACHE_PATH) if isfile(join(CACHE_PATH, f)) ]
 		if term in cache_files:
 			# If cache exists, if it was made today:
-			if is_modified_today(term):
+			if is_modified_today(join(CACHE_PATH,term)):
 				with open(join(CACHE_PATH,term), 'rb') as cache_file:
 					return pickle.load(cache_file)
 	except Exception as e:
 		print e
 	return None
+	
+def garbage_collect():
+	''' Clear cache. '''
+	# Check garbage collect mutex if it was modified today
+	try:
+		if is_modified_today('gc'): 
+			return
+		cache_files = [ f for f in listdir(CACHE_PATH) if isfile(join(CACHE_PATH, f)) ]
+		for cache_file in cache_files:
+			if not is_modified_today(cache_file):
+				os.remove(cache_file)
+		# Touch garbage collect mutex
+		open('gc', 'a').close()
+	except:
+		open('gc', 'a').close()
 
 def dump_cache(term, json):
 	''' Cache VT result for the given term. '''
